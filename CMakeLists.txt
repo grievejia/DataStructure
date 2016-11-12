@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
-project(auditorNative)
+project(DataStructure)
 
 # Check for C++14 support
 include (CheckCXXCompilerFlag)
