@@ -32,6 +32,11 @@ namespace ds {
 // additional benefit it provides (stable iterators) for some of the
 // applications I had in mind.
 
+// Due to the way UnorderedCollection is implemented, it has an additional
+// feature of holding polymorphic objects. Elements in UnorderedCollection<T>
+// can be either objects of T or objects of U, where U is a subclass of T. The
+// polyCreate<U>() function can be used to perform polymorphic allocation.
+
 // TODO: customize allocator and deleter
 
 template <typename T>
@@ -91,6 +96,15 @@ public:
         return *allocList.back();
     }
 
+    template <typename U, typename... Args>
+    U& polyCreate(Args&&... args) {
+        static_assert(
+            std::is_base_of<T, U>::value,
+            "UnorderedCollection<T>::polyCreate can only create subclass of T");
+        allocList.push_back(std::make_unique<U>(std::forward<Args>(args)...));
+        return static_cast<U&>(*allocList.back());
+    }
+
     // This function removes 'elem' from the collection and release its memory
     // immeidately.
     // It requires O(n) time for scaning the entire collection to find out the
@@ -112,7 +126,7 @@ public:
     // Here, elemSet is expected to be a set of T*. The runtime complexity of
     // this function is O(n*m), where O(m) is the complexity of elemSet.count().
     template <typename ElementSet>
-    void remove_batch(const ElementSet& elemSet) {
+    void removeBatch(const ElementSet& elemSet) {
         ListType newAllocList;
         newAllocList.reserve(allocList.size());
         for (auto&& elem : allocList) {

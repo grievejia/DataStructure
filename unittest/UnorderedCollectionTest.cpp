@@ -29,6 +29,36 @@ TEST(UnorderedCollectionTest, BasicTest) {
     EXPECT_EQ(c2.size(), 0u);
 }
 
+struct Base {
+    int i;
+    Base(int i) : i(i) {}
+    virtual ~Base() = default;
+};
+
+struct Derived : public Base {
+    int j;
+    Derived(int i, int j) : Base(i), j(j) {}
+};
+
+TEST(UnorderedCollectionTest, PolyTest) {
+    UnorderedCollection<Base> c;
+
+    auto& b = c.create(1);
+    EXPECT_EQ(b.i, 1);
+    auto& d = c.polyCreate<Derived>(2, 3);
+    EXPECT_EQ(d.i, 2);
+    EXPECT_EQ(d.j, 3);
+    EXPECT_EQ(c.size(), 2u);
+
+    c.remove(b);
+    EXPECT_EQ(c.size(), 1u);
+    EXPECT_EQ(d.i, 2);
+    EXPECT_EQ(d.j, 3);
+
+    c.remove(d);
+    EXPECT_EQ(c.size(), 0u);
+}
+
 struct LiveCounter {
     static unsigned liveCnt;
     unsigned value;
@@ -78,14 +108,14 @@ TEST(UnorderedCollectionTest, RemoveBatchTest) {
     EXPECT_EQ(LiveCounter::liveCnt, 8u);
     std::unordered_set<const LiveCounter*> deadSet = {&e1, &e3, &e5, &ee0,
                                                       &ee1};
-    c.remove_batch(deadSet);
+    c.removeBatch(deadSet);
     EXPECT_EQ(c.size(), 3u);
     EXPECT_EQ(LiveCounter::liveCnt, 5u);
     EXPECT_EQ(e0.value, 0);
     EXPECT_EQ(e2.value, 2);
     EXPECT_EQ(e4.value, 4);
 
-    c2.remove_batch(deadSet);
+    c2.removeBatch(deadSet);
     EXPECT_EQ(c2.size(), 0u);
     EXPECT_EQ(LiveCounter::liveCnt, 3u);
 }
