@@ -3,6 +3,8 @@
 #include <cassert>
 #include <cstdint>
 #include <limits>
+#include <type_traits>
+#include <utility>
 
 // This file contains various helper functions that are useful for other part of
 // the DataStructure library (mostly math utilities)
@@ -13,7 +15,7 @@
 namespace ds {
 namespace detail {
 
-inline uint64_t nextPowerOfTwo(uint64_t a) {
+inline constexpr uint64_t nextPowerOfTwo(uint64_t a) {
     a |= (a >> 1);
     a |= (a >> 2);
     a |= (a >> 4);
@@ -78,5 +80,15 @@ int lowestBit(T x) {
     // then calculate the logarithm base 2
     return integerLog2<T>(x - (x & (x - 1)));
 }
+
+template <typename T>
+struct isPodLike {
+    static constexpr bool value = std::is_trivially_copyable<T>::value;
+};
+
+template <typename T, typename U>
+struct isPodLike<std::pair<T, U>> {
+    static constexpr bool value = isPodLike<T>::value && isPodLike<U>::value;
+};
 }
 }

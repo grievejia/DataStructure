@@ -18,6 +18,7 @@ option (BUILD_TESTS "build all unit tests" OFF)
 set(HEADER_PATH ${PROJECT_SOURCE_DIR}/include)
 include_directories (${HEADER_PATH})
 add_library (DataStructure STATIC
+	lib/SmallVector.cpp
 	lib/StringView.cpp
 )
 
@@ -44,9 +45,11 @@ if (BUILD_TESTS)
 		add_test(${testname} ${testname})		
 	endmacro()
 
+	add_unit_test(ArrayRefTest)
 	add_unit_test(DenseMapTest)
 	add_unit_test(DenseSetTest)
 	add_unit_test(DynamicBitSetTest)
+	add_unit_test(SmallVectorTest)
 	add_unit_test(StringMapTest)
 	add_unit_test(StringViewTest)
 	add_unit_test(UnorderedCollectionTest)
