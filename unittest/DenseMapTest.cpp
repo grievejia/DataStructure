@@ -2,6 +2,9 @@
 
 #include "gtest/gtest.h"
 
+#include <array>
+#include <vector>
+
 using namespace ds;
 
 namespace {
@@ -341,12 +344,16 @@ TEST(DenseMapCustomTest, FindAsTest) {
     EXPECT_TRUE(map.find(3) == map.end());
 }
 
-struct ContiguousDenseMapInfo {
-    static inline unsigned getEmptyKey() { return ~0; }
-    static inline unsigned getTombstoneKey() { return ~0U - 1; }
-    static unsigned getHashValue(const unsigned& Val) { return Val; }
-    static bool isEqual(const unsigned& LHS, const unsigned& RHS) {
-        return LHS == RHS;
-    }
-};
+TEST(DenseMapTest, ArrayRefTest) {
+    std::vector<int> v0 = {1, 2, 3, 4};
+    std::array<int, 4> v1{{1, 2, 3, 4}};
+    std::vector<int> v2 = {2, 3, 4};
+    DenseMap<ArrayRef<int>, int> theMap;
+
+    EXPECT_TRUE(theMap.insert(std::make_pair(ArrayRef<int>(v0), 0)).second);
+    EXPECT_TRUE(theMap.count(v0));
+    EXPECT_TRUE(theMap.count(v1));
+    EXPECT_EQ(theMap[v1], 0);
+    EXPECT_FALSE(theMap.count(v2));
+}
 }

@@ -310,3 +310,19 @@ struct isPodLike<ArrayRef<T>> {
 };
 }
 }
+
+namespace std {
+template <typename T>
+struct hash<ds::ArrayRef<T>> {
+    void hash_combine(std::size_t& seed, const T& v) const {
+        seed ^= std::hash<T>()(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    }
+
+    size_t operator()(const ds::ArrayRef<T>& a) const {
+        std::size_t seed = 0;
+        for (auto const& elem : a)
+            hash_combine(seed, elem);
+        return seed;
+    }
+};
+}

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "DataStructure/ArrayRef.h"
 #include "DataStructure/StringView.h"
 
 #include <algorithm>
@@ -235,6 +236,32 @@ struct DenseMapInfo<StringView> {
     }
 
     static bool isEqual(const StringView& lhs, const StringView& rhs) {
+        if (rhs.data() == getEmptyKey().data())
+            return lhs.data() == getEmptyKey().data();
+        if (rhs.data() == getTombstoneKey().data())
+            return lhs.data() == getTombstoneKey().data();
+        return lhs == rhs;
+    }
+};
+
+template <typename T>
+struct DenseMapInfo<ArrayRef<T>> {
+    static inline ArrayRef<T> getEmptyKey() {
+        return ArrayRef<T>(
+            reinterpret_cast<const T*>(~static_cast<uintptr_t>(0)), size_t(0));
+    }
+    static inline ArrayRef<T> getTombstoneKey() {
+        return ArrayRef<T>(
+            reinterpret_cast<const T*>(~static_cast<uintptr_t>(1)), size_t(0));
+    }
+    static unsigned getHashValue(ArrayRef<T> val) {
+        assert(val.data() != getEmptyKey().data() &&
+               "Cannot hash the empty key!");
+        assert(val.data() != getTombstoneKey().data() &&
+               "Cannot hash the tombstone key!");
+        return (unsigned)(std::hash<ArrayRef<T>>()(val));
+    }
+    static bool isEqual(ArrayRef<T> lhs, ArrayRef<T> rhs) {
         if (rhs.data() == getEmptyKey().data())
             return lhs.data() == getEmptyKey().data();
         if (rhs.data() == getTombstoneKey().data())
