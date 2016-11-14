@@ -342,6 +342,12 @@ TEST(DenseMapCustomTest, FindAsTest) {
     EXPECT_EQ(2u, map.find(1)->second);
     EXPECT_EQ(3u, map.find(2)->second);
     EXPECT_TRUE(map.find(3) == map.end());
+
+    // find_as() tests
+    EXPECT_EQ(1u, map.find_as("a")->second);
+    EXPECT_EQ(2u, map.find_as("b")->second);
+    EXPECT_EQ(3u, map.find_as("c")->second);
+    EXPECT_TRUE(map.find_as("d") == map.end());
 }
 
 TEST(DenseMapTest, ArrayRefTest) {
@@ -355,5 +361,16 @@ TEST(DenseMapTest, ArrayRefTest) {
     EXPECT_TRUE(theMap.count(v1));
     EXPECT_EQ(theMap[v1], 0);
     EXPECT_FALSE(theMap.count(v2));
+}
+
+TEST(DenseMapCustomTest, TryEmplaceTest) {
+    DenseMap<int, std::unique_ptr<int>> Map;
+    std::unique_ptr<int> p(new int(2));
+    auto try1 = Map.try_emplace(0, new int(1));
+    EXPECT_TRUE(try1.second);
+    auto try2 = Map.try_emplace(0, std::move(p));
+    EXPECT_FALSE(try2.second);
+    EXPECT_EQ(try1.first, try2.first);
+    EXPECT_NE(nullptr, p);
 }
 }

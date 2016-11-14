@@ -63,6 +63,15 @@ private:
             ::new (&b->getFirst()) KeyT(emptyKey);
     }
 
+    unsigned getMinBucketToReserveForEntries(unsigned numEntries) {
+        // Ensure that "NumEntries * 4 < NumBuckets * 3"
+        if (numEntries == 0)
+            return 0;
+        // +1 is required because of the strict equality.
+        // For example if NumEntries is 48, we need to return 401.
+        return detail::nextPowerOfTwo(numEntries * 4 / 3 + 1);
+    }
+
     void moveFromOldBuckets(BucketT* oldBegin, BucketT* oldEnd) {
         initEmpty();
 
@@ -108,26 +117,16 @@ private:
         }
     }
 
-    BucketT* insertIntoBucket(const KeyT& key, const ValueT& value,
-                              BucketT* theBucket) {
+    template <typename KeyArg, typename... ValueArgs>
+    BucketT* insertIntoBucket(BucketT* theBucket, KeyArg&& key,
+                              ValueArgs&&... values) {
         theBucket = insertIntoBucketImpl(key, theBucket);
-        theBucket->getFirst() = key;
-        ::new (&theBucket->getSecond()) ValueT(value);
+        theBucket->getFirst() = std::forward<KeyArg>(key);
+        ::new (&theBucket->getSecond())
+            ValueT(std::forward<ValueArgs>(values)...);
         return theBucket;
     }
-    BucketT* insertIntoBucket(const KeyT& key, ValueT&& value,
-                              BucketT* theBucket) {
-        theBucket = insertIntoBucketImpl(key, theBucket);
-        theBucket->getFirst() = key;
-        ::new (&theBucket->getSecond()) ValueT(std::move(value));
-        return theBucket;
-    }
-    BucketT* insertIntoBucket(KeyT&& key, ValueT&& value, BucketT* theBucket) {
-        theBucket = insertIntoBucketImpl(key, theBucket);
-        theBucket->getFirst() = std::move(key);
-        ::new (&theBucket->getSecond()) ValueT(std::move(value));
-        return theBucket;
-    }
+
     BucketT* insertIntoBucketImpl(const KeyT& key, BucketT* theBucket) {
         auto newNumEntries = numEntries + 1;
         if (newNumEntries * 4 >= numBuckets * 3) {
@@ -142,12 +141,15 @@ private:
 
         ++numEntries;
 
-        if (!KeyInfoT::isEqual(theBucket->getFirst(), KeyInfoT::getEmptyKey()))
+        auto emptyKey = KeyInfoT::getEmptyKey();
+        if (!KeyInfoT::isEqual(theBucket->getFirst(), emptyKey))
             --numTombstones;
         return theBucket;
     }
 
-    bool lookupBucketFor(const KeyT& k, const BucketT*& foundBucket) const {
+    template <typename LookupKeyT>
+    bool lookupBucketFor(const LookupKeyT& k,
+                         const BucketT*& foundBucket) const {
         if (numBuckets == 0) {
             foundBucket = nullptr;
             return false;
@@ -183,7 +185,8 @@ private:
         }
     }
 
-    bool lookupBucketFor(const KeyT& key, BucketT*& foundBucket) {
+    template <typename LookupKeyT>
+    bool lookupBucketFor(const LookupKeyT& key, BucketT*& foundBucket) {
         const BucketT* constFoundBucket;
         bool result = const_cast<const DenseMap*>(this)->lookupBucketFor(
             key, constFoundBucket);
@@ -313,6 +316,12 @@ public:
             grow(s);
     }
 
+    void reserve(size_type numEntries) {
+        auto newNumBuckets = getMinBucketToReserveForEntries(numEntries);
+        if (newNumBuckets > numBuckets)
+            grow(newNumBuckets);
+    }
+
     void clear() {
         if (numEntries == 0 && numTombstones == 0)
             return;
@@ -360,6 +369,23 @@ public:
             return theBucket->getSecond();
         return ValueT();
     }
+
+    template <typename LookupKeyT>
+    iterator find_as(const LookupKeyT& key) {
+        BucketT* theBucket;
+        if (lookupBucketFor(key, theBucket))
+            return iterator(theBucket, getBucketsEnd(), true);
+        return end();
+    }
+
+    template <typename LookupKeyT>
+    const_iterator find_as(const LookupKeyT& key) const {
+        const BucketT* theBucket;
+        if (lookupBucketFor(key, theBucket))
+            return const_iterator(theBucket, getBucketsEnd(), true);
+        return end();
+    }
+
     ValueT at(const KeyT& k) const {
         const BucketT* theBucket;
         if (lookupBucketFor(k, theBucket))
@@ -368,23 +394,10 @@ public:
     }
 
     std::pair<iterator, bool> insert(const std::pair<KeyT, ValueT>& kv) {
-        BucketT* theBucket;
-        if (lookupBucketFor(kv.first, theBucket))
-            return std::make_pair(iterator(theBucket, getBucketsEnd(), true),
-                                  false);
-
-        theBucket = insertIntoBucket(kv.first, kv.second, theBucket);
-        return std::make_pair(iterator(theBucket, getBucketsEnd(), true), true);
+        return try_emplace(kv.first, kv.second);
     }
     std::pair<iterator, bool> insert(std::pair<KeyT, ValueT>&& kv) {
-        BucketT* theBucket;
-        if (lookupBucketFor(kv.first, theBucket))
-            return std::make_pair(iterator(theBucket, getBucketsEnd(), true),
-                                  false);
-
-        theBucket = insertIntoBucket(std::move(kv.first), std::move(kv.second),
-                                     theBucket);
-        return std::make_pair(iterator(theBucket, getBucketsEnd(), true), true);
+        return try_emplace(std::move(kv.first), std::move(kv.second));
     }
 
     template <typename Iterator>
@@ -393,17 +406,41 @@ public:
             insert(*i);
     }
 
+    template <typename... Args>
+    std::pair<iterator, bool> try_emplace(KeyT&& key, Args&&... args) {
+        BucketT* theBucket;
+        if (lookupBucketFor(key, theBucket))
+            return std::make_pair(iterator(theBucket, getBucketsEnd(), true),
+                                  false);
+
+        theBucket = insertIntoBucket(theBucket, std::move(key),
+                                     std::forward<Args>(args)...);
+        return std::make_pair(iterator(theBucket, getBucketsEnd(), true), true);
+    }
+
+    template <typename... Args>
+    std::pair<iterator, bool> try_emplace(const KeyT& key, Args&&... args) {
+        BucketT* theBucket;
+        if (lookupBucketFor(key, theBucket))
+            return std::make_pair(iterator(theBucket, getBucketsEnd(), true),
+                                  false);
+
+        theBucket =
+            insertIntoBucket(theBucket, key, std::forward<Args>(args)...);
+        return std::make_pair(iterator(theBucket, getBucketsEnd(), true), true);
+    }
+
     value_type& findAndConstruct(const KeyT& k) {
         BucketT* theBucket;
         if (lookupBucketFor(k, theBucket))
             return *theBucket;
-        return *insertIntoBucket(k, ValueT(), theBucket);
+        return *insertIntoBucket(theBucket, k);
     }
     value_type& findAndConstruct(KeyT&& k) {
         BucketT* theBucket;
         if (lookupBucketFor(k, theBucket))
             return *theBucket;
-        return *insertIntoBucket(std::move(k), ValueT(), theBucket);
+        return *insertIntoBucket(theBucket, std::move(k));
     }
     ValueT& operator[](const KeyT& k) { return findAndConstruct(k).second; }
     ValueT& operator[](KeyT&& k) {
@@ -431,6 +468,7 @@ public:
 
     bool empty() const { return numEntries == 0; }
     size_t size() const { return numEntries; }
+    size_t getMemorySize() const { return numBuckets * sizeof(BucketT); }
     iterator begin() {
         return empty() ? end() : iterator(getBuckets(), getBucketsEnd());
     }

@@ -36,12 +36,17 @@ public:
     using size_type = unsigned;
 
     explicit DenseSet(unsigned numInitBuckets = 0) : theMap(numInitBuckets) {}
+    DenseSet(std::initializer_list<ValueT> elems) : DenseSet(elems.size()) {
+        insert(elems.begin(), elems.end());
+    }
     bool empty() const { return theMap.empty(); }
     size_type size() const { return theMap.size(); }
+    size_type getMemorySize() const { return theMap.getMemorySize(); }
     size_type count(const ValueT& v) const { return theMap.count(v); }
     bool erase(const ValueT& v) { return theMap.erase(v); }
     void swap(DenseSet& rhs) { theMap.swap(rhs.theMap); }
     void resize(size_t s) { theMap.resize(s); }
+    void reserve(size_t s) { theMap.reserve(s); }
     void clear() { theMap.clear(); }
     class Iterator {
     private:
@@ -104,12 +109,24 @@ public:
     const_iterator find(const ValueT& v) const {
         return ConstIterator(theMap.find(v));
     }
+    template <typename LookupKeyT>
+    iterator find_as(const LookupKeyT& key) {
+        return Iterator(theMap.find_as(key));
+    }
+    template <typename LookupKeyT>
+    const_iterator find_as(const LookupKeyT& key) const {
+        return ConstIterator(theMap.find_as(key));
+    }
 
     void erase(Iterator i) { return theMap.erase(i.itr); }
     void erase(ConstIterator i) { return theMap.erase(i.itr); }
     std::pair<iterator, bool> insert(const ValueT& v) {
         detail::DenseSetEmpty empty;
-        return theMap.insert(std::make_pair(v, empty));
+        return theMap.try_emplace(v, empty);
+    }
+    std::pair<iterator, bool> insert(ValueT&& v) {
+        detail::DenseSetEmpty empty;
+        return theMap.try_emplace(std::move(v), empty);
     }
 
     template <typename InputIt>
