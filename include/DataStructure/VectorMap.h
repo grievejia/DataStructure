@@ -6,8 +6,10 @@
 
 namespace ds {
 
+// A map-like container backed up by a sorted vector
+
 template <typename Key, typename Value, typename KeyCompare = std::less<Key>,
-          typename Allocator = std::allocator<std::pair<const Key, Value>>>
+          typename Allocator = std::allocator<std::pair<Key, Value>>>
 class VectorMap {
 public:
     // Member types

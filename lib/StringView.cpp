@@ -8,7 +8,7 @@
 
 namespace {
 
-static constexpr unsigned CHAR_BIT = 8;
+static constexpr unsigned NUM_CHAR_BITS = 8;
 
 inline char ascii_tolower(char x) {
     if (x >= 'A' && x <= 'Z')
@@ -211,7 +211,7 @@ size_t StringView::find_first_of(char c, size_t from) const {
 }
 
 size_t StringView::find_first_of(StringView chars, size_t from) const {
-    std::bitset<1 << CHAR_BIT> charBits;
+    std::bitset<1 << NUM_CHAR_BITS> charBits;
     for (size_type i = 0; i != chars.size(); ++i)
         charBits.set((unsigned char)chars[i]);
 
@@ -229,7 +229,7 @@ size_t StringView::find_first_not_of(char c, size_t from) const {
 }
 
 size_t StringView::find_first_not_of(StringView chars, size_t from) const {
-    std::bitset<1 << CHAR_BIT> charBits;
+    std::bitset<1 << NUM_CHAR_BITS> charBits;
     for (size_type i = 0; i != chars.size(); ++i)
         charBits.set((unsigned char)chars[i]);
 
@@ -244,7 +244,7 @@ size_t StringView::find_last_of(char c, size_t from) const {
 }
 
 size_t StringView::find_last_of(StringView chars, size_t from) const {
-    std::bitset<1 << CHAR_BIT> charBits;
+    std::bitset<1 << NUM_CHAR_BITS> charBits;
     for (size_type i = 0; i != chars.size(); ++i)
         charBits.set((unsigned char)chars[i]);
 
@@ -262,7 +262,7 @@ size_t StringView::find_last_not_of(char c, size_t from) const {
 }
 
 size_t StringView::find_last_not_of(StringView chars, size_t from) const {
-    std::bitset<1 << CHAR_BIT> charBits;
+    std::bitset<1 << NUM_CHAR_BITS> charBits;
     for (size_type i = 0, e = chars.size(); i != e; ++i)
         charBits.set((unsigned char)chars[i]);
 

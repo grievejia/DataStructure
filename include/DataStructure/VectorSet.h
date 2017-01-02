@@ -7,6 +7,8 @@
 
 namespace ds {
 
+// A set-like container backed up by a sorted vector
+
 template <typename T, typename Comparator = std::less<T>,
           typename Allocator = std::allocator<T>>
 class VectorSet {
