@@ -1,28 +1,35 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.1)
 project(DataStructure)
 
-# Check for C++14 support
-include (CheckCXXCompilerFlag)
-CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
-if (NOT COMPILER_SUPPORTS_CXX14)
-	message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++14 support. Please use a different C++ compiler.")
-endif()
-
 # Set compilation flag
-set (CMAKE_CXX_FLAGS " -std=c++14 -Wall -fno-rtti -fPIC")
+set (CMAKE_CXX_FLAGS "-Wall -fno-rtti")
 set (CMAKE_CXX_FLAGS_DEBUG "-O0 -g")
 set (CMAKE_CXX_FLAGS_RELEASE "-Ofast -march=native -mtune=native -DNDEBUG")
 
-option (BUILD_TESTS "build all unit tests" OFF)
+include(CTest)
 
 set(HEADER_PATH ${PROJECT_SOURCE_DIR}/include)
 include_directories (${HEADER_PATH})
-add_library (DataStructure STATIC
+add_library (ds STATIC
 	lib/SmallVector.cpp
 	lib/StringView.cpp
 )
+set_property(TARGET ds PROPERTY CXX_STANDARD 14)
+set_property(TARGET ds PROPERTY CXX_STANDARD_REQUIRED ON)
 
-if (BUILD_TESTS)
+install (
+	DIRECTORY ${HEADER_PATH}/DataStructure
+	DESTINATION include
+)
+install (
+	TARGETS ds
+	DESTINATION lib
+)
+target_include_directories(ds PUBLIC
+  $<BUILD_INTERFACE:${HEADER_PATH}>
+  $<INSTALL_INTERFACE:include>)
+
+if (BUILD_TESTING)
 	enable_testing()
 	set(UNITTEST_PATH ${PROJECT_SOURCE_DIR}/unittest)
 
@@ -58,12 +65,3 @@ if (BUILD_TESTS)
 	add_unit_test(VectorSetTest)
 	add_unit_test(WorkListTest)
 endif()
-
-install (
-	DIRECTORY ${HEADER_PATH}/DataStructure
-	DESTINATION include
-)
-install (
-	TARGETS DataStructure
-	DESTINATION lib
-)
